@@ -1531,8 +1531,7 @@ final class Base extends Prefab implements ArrayAccess {
 		if ($url[0]=='/' && (empty($url[1]) || $url[1]!='/')) {
 			$port=$this->hive['PORT'];
 			$port=in_array($port,[80,443])?'':(':'.$port);
-			$url=$this->hive['SCHEME'].'://'.
-				$this->hive['HOST'].$port.$this->hive['BASE'].$url;
+			$url=$this->hive['BASE'].$url;
 		}
 		if ($this->hive['CLI'])
 			$this->mock('GET '.$url.' [cli]');
