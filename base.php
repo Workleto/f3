@@ -44,7 +44,7 @@ final class Base extends Prefab implements ArrayAccess {
 
 	//@{ Framework details
 	const
-		PACKAGE='Fat-Free Framework',
+		PACKAGE='Workleto',
 		VERSION='3.7.3-Dev';
 	//@}
 
