@@ -110,7 +110,6 @@ class Pingback extends \Prefab {
 	function listen($func,$path=NULL) {
 		$fw=\Base::instance();
 		if (PHP_SAPI!='cli') {
-			header('X-Powered-By: '.$fw->PACKAGE);
 			header('Content-Type: application/xml; '.
 				'charset='.$charset=$fw->ENCODING);
 		}

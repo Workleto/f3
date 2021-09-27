@@ -480,7 +480,6 @@ class Image {
 		$format=$args?array_shift($args):'png';
 		if (PHP_SAPI!='cli') {
 			header('Content-Type: image/'.$format);
-			header('X-Powered-By: '.Base::instance()->PACKAGE);
 		}
 		call_user_func_array(
 			'image'.$format,
