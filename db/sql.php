@@ -66,7 +66,9 @@ class SQL {
 	*	@return bool
 	**/
 	function rollback() {
-		$out=$this->pdo->rollback();
+		$out=FALSE;
+		if ($this->pdo->inTransaction())
+			$out=$this->pdo->rollback();
 		$this->trans=FALSE;
 		return $out;
 	}
@@ -76,7 +78,9 @@ class SQL {
 	*	@return bool
 	**/
 	function commit() {
-		$out=$this->pdo->commit();
+		$out=FALSE;
+		if ($this->pdo->inTransaction())
+			$out=$this->pdo->commit();
 		$this->trans=FALSE;
 		return $out;
 	}
@@ -173,7 +177,7 @@ class SQL {
 		$fw=\Base::instance();
 		$cache=\Cache::instance();
 		$result=FALSE;
-		for ($i=0;$i<$count;$i++) {
+		for ($i=0;$i<$count;++$i) {
 			$cmd=$cmds[$i];
 			$arg=$args[$i];
 			// ensure 1-based arguments
@@ -257,7 +261,7 @@ class SQL {
 				$query->closecursor();
 				unset($query);
 			}
-			elseif (($error=$this->errorinfo()) && $error[0]!=\PDO::ERR_NONE) {
+			elseif (($error=$this->pdo->errorInfo()) && $error[0]!=\PDO::ERR_NONE) {
 				// PDO-level error occurred
 				if ($this->trans)
 					$this->rollback();
@@ -335,7 +339,7 @@ class SQL {
 		$cmd=[
 			'sqlite2?'=>[
 				'SELECT * FROM pragma_table_info('.$this->quote($table).') JOIN ('.
-					'SELECT sql FROM sqlite_master WHERE type=\'table\' AND '.
+					'SELECT sql FROM sqlite_master WHERE (type=\'table\' OR type=\'view\')  AND '.
 					'name='.$this->quote($table).')',
 				'name','type','dflt_value','notnull',0,'pk',TRUE,'sql',
 					'/\W(%s)\W+[^,]+?AUTOINCREMENT\W/i'],
@@ -408,21 +412,22 @@ class SQL {
 						foreach ($conv as $regex=>$type)
 							if (preg_match('/'.$regex.'/i',$row[$val[2]]))
 								break;
-						$rows[$row[$val[1]]]=[
-							'type'=>$row[$val[2]],
-							'pdo_type'=>$type,
-							'default'=>is_string($row[$val[3]])?
-								preg_replace('/^\s*([\'"])(.*)\1\s*/','\2',
-								$row[$val[3]]):$row[$val[3]],
-							'nullable'=>$row[$val[4]]==$val[5],
-							'pkey'=>$row[$val[6]]==$val[7],
-							'auto_inc'=>isset($val[8]) && isset($row[$val[8]])
-								? ($this->engine=='sqlite'?
-									(bool) preg_match(sprintf($val[9],$row[$val[1]]),
-										$row[$val[8]]):
-									($row[$val[8]]==$val[9])
-								) : NULL,
-						];
+						if (!isset($rows[$row[$val[1]]])) // handle duplicate rows in PgSQL
+							$rows[$row[$val[1]]]=[
+								'type'=>$row[$val[2]],
+								'pdo_type'=>$type,
+								'default'=>is_string($row[$val[3]])?
+									preg_replace('/^\s*([\'"])(.*)\1\s*/','\2',
+									$row[$val[3]]):$row[$val[3]],
+								'nullable'=>$row[$val[4]]==$val[5],
+								'pkey'=>$row[$val[6]]==$val[7],
+								'auto_inc'=>isset($val[8]) && isset($row[$val[8]])
+									? ($this->engine=='sqlite'?
+										(bool) preg_match(sprintf($val[9],$row[$val[1]]),
+											$row[$val[8]]):
+										($row[$val[8]]==$val[9])
+									) : NULL,
+							];
 					}
 				if ($fw->CACHE && $ttl)
 					// Save to cache backend
@@ -534,7 +539,7 @@ class SQL {
 		$fw=\Base::instance();
 		$this->uuid=$fw->hash($this->dsn=$dsn);
 		if (preg_match('/^.+?(?:dbname|database)=(.+?)(?=;|$)/is',$dsn,$parts))
-			$this->dbname=$parts[1];
+			$this->dbname=str_replace('\\ ',' ',$parts[1]);
 		if (!$options)
 			$options=[];
 		if (isset($parts[0]) && strstr($parts[0],':',TRUE)=='mysql')
