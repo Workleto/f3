@@ -1496,8 +1496,9 @@ final class Base extends Prefab implements ArrayAccess {
 	*	@param $handler callback
 	*	@param $ttl int
 	*	@param $kbps int
+    *   @param $rawPattern bool
 	**/
-	function route($pattern,$handler,$ttl=0,$kbps=0) {
+	function route($pattern,$handler,$ttl=0,$kbps=0,$rawPattern=false) {
 		$types=['sync','ajax','cli'];
 		$alias=null;
 		if (is_array($pattern)) {
@@ -1519,6 +1520,8 @@ final class Base extends Prefab implements ArrayAccess {
 		}
 		if (empty($parts[3]))
 			user_error(sprintf(self::E_Pattern,$pattern),E_USER_ERROR);
+        if ($rawPattern)
+            $this->hive['RAW_ROUTES'][$parts[3]]=true;
 		$type=empty($parts[5])?0:constant('self::REQ_'.strtoupper($parts[5]));
 		foreach ($this->split($parts[1]) as $verb) {
 			if (!preg_match('/'.self::VERBS.'/',$verb))
@@ -1640,7 +1643,10 @@ final class Base extends Prefab implements ArrayAccess {
 		if (!$url)
 			$url=$this->rel($this->hive['URI']);
 		$case=$this->hive['CASELESS']?'i':'';
-		$wild=preg_quote($pattern,'/');
+        if (!isset($this->hive['RAW_ROUTES'][$pattern]))
+            $wild=preg_quote($pattern,'/');
+        else
+            $wild=$pattern;
 		$i=0;
 		while (is_int($pos=strpos($wild,'\*'))) {
 			$wild=substr_replace($wild,'(?P<_'.$i.'>[^\?]*)',$pos,2);
